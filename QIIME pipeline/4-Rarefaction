@@ -1,2 +1,17 @@
 #Phylogenetic Diversity Rooted Tree
 
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+
+#Alpha Rarefaction
+
+qiime diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 9000 \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization alpha-rarefaction.qzv

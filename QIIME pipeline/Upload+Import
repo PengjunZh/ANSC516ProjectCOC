@@ -1,0 +1,20 @@
+#Upload Sequences and Metada to Cluster
+
+cd Desktop/Project
+scp metadata zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project/metadata
+scp -r sequences zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project
+
+#Importing Data to Qiime
+#log in cluster and load modules like in file "LogIn"
+
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path sequence \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux-paired-end.qza
+
+mv demux-paired-end.qza demux.qza
+
+qiime demux summarize \
+  --i-data demux.qza \
+  --o-visualization demux.qzv

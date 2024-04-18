@@ -1,0 +1,58 @@
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table.qza \
+  --p-sampling-depth 9000 \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --output-dir core-metrics-results
+
+#Alpha Diversity Significance
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/evenness_vector.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization core-metrics-results/evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/shannon_vector.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization core-metrics-results/shannon-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/observed_features_vector.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization core-metrics-results/observed-features-significance.qzv
+
+#Beta Diversity Significance
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --m-metadata-column condition \
+  --o-visualization core-metrics-results/unweighted-unifrac-body-site-significance.qzv \
+  --p-pairwise
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --m-metadata-column condition \
+  --o-visualization core-metrics-results/weighted-unifrac-subject-group-significance.qzv \
+  --p-pairwise
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/bray_curtis_distance_matrix.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --m-metadata-column condition \
+  --o-visualization core-metrics-results/bray-curtis-body-condition-group-significance.qzv \
+  --p-pairwise
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/jaccard_distance_matrix.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --m-metadata-column condition \
+  --o-visualization core-metrics-results/jaccard-condition-group-significance.qzv \
+  --p-pairwise

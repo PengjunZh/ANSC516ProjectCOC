@@ -9,6 +9,10 @@ if(!dir.exists("/Users/pengjunzhang/Desktop/Project/output/taxa"))
   dir.create("/Users/pengjunzhang/Desktop/Project/output/taxa")
 setwd("/Users/pengjunzhang/Desktop/Project")
 
+#################################################################
+###Taxa Barplots
+#################################################################
+
 physeq <- qza_to_phyloseq(
   features = "core-metrics-results/rarefied_table.qza" ,
   tree = "rooted-tree.qza" ,
@@ -114,6 +118,10 @@ for(ml in my_level){
     ggtitle(paste0(ml, " (>", abund_filter * 100,"%) in at least 1 sample")) 
   ggsave(paste0("output/taxa/", ml, "BarPlot_", my_column, ".png"), height = 5, width = 4)
 }
+
+#################################################################
+###Differential Abundance with DESeq2
+#################################################################
 
 physeq_otu_table <- data.frame(otu_table(physeq), check.names = FALSE)
 

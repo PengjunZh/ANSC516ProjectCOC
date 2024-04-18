@@ -1,0 +1,199 @@
+library(devtools)
+library(tidyverse)
+library(vegan)
+library(qiime2R)
+library(dplyr)
+
+getwd()
+setwd("/Users/pengjunzhang/Desktop/Project")
+
+list.files()
+
+metadata2 <- read.delim("COC_Metadata.tsv", sep = "\t", header = T, quote = "", stringsAsFactors = F)
+metadata2[1,]
+metadata2[,1]
+metadata2 <- metadata2[-1,]
+
+metadata<-read_q2metadata("COC_Metadata.tsv")
+str(metadata)
+levels(metadata$"diet")
+colnames(metadata)[2] <- "diet"
+colnames(metadata)[3] <- "exercise"
+colnames(metadata)[4] <- "condition"
+colnames(metadata)[5] <- "estrous_stage"
+str(metadata)
+
+row.names(metadata) <- metadata[,1]
+row.names(metadata) <- metadata$SampleID
+row.names(metadata)
+
+bc_PCoA <- read_qza("core-metrics-results/bray_curtis_pcoa_results.qza")
+Wuni_PCoA <- read_qza("core-metrics-results/weighted_unifrac_pcoa_results.qza")
+jc_PCoA <- read_qza("core-metrics-results/jaccard_pcoa_results.qza")
+UWuni_PCoA <- read_qza("core-metrics-results/unweighted_unifrac_pcoa_results.qza")
+
+diet_colors <- c("blue", "orange")
+
+my_column <- "diet"
+
+bc_meta <- bc_PCoA$data$Vectors %>%
+  select(SampleID, PC1, PC2) %>%
+  inner_join(metadata, by = c("SampleID" = "SampleID"))
+
+ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*bc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*bc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/BC-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+centroids <- aggregate(cbind(PC1,PC2)~get(my_column),bc_meta,mean)
+colnames(centroids)[1] <- "diet"
+
+ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  geom_point(data=centroids, size=3) +
+  theme_q2r() +
+  stat_ellipse(level=0.95, type="t") +
+  xlab(paste0("PC1 (", round(100*bc_PCoA$data$ProportionExplained[1], digits=2), "%)")) +
+  ylab(paste0("PC2 (", round(100*bc_PCoA$data$ProportionExplained[2], digits=2), "%)")) +
+  scale_color_manual(values=diet_colors, name=my_column)
+ggsave(paste0("output/BC-ellipse_", my_column, ".tiff"), height=3, width=4.5, device="tiff")
+
+ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point(aes(shape= exercise)) + 
+  geom_point(data=centroids, size = 3) +
+  theme_q2r() +
+  stat_ellipse(level = 0.95, type = "t") +
+  xlab(paste0("PC1 (", round(100*bc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*bc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/BC-ellipse_", my_column,"-exercise.tiff"), height=3, width=4.5, device="tiff")
+
+Wuni_meta <- Wuni_PCoA$data$Vectors %>%
+  select(SampleID, PC1, PC2) %>%
+  inner_join(metadata, by = c("SampleID" = "SampleID"))
+
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/Wuni-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+centroids <- aggregate(cbind(PC1,PC2)~get(my_column),Wuni_meta,mean)
+colnames(centroids)[1] <- "diet"
+
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/Wuni-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  geom_point(data=centroids, size=3) +
+  theme_q2r() +
+  stat_ellipse(level=0.95, type="t") +
+  xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits=2), "%)")) +
+  ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits=2), "%)")) +
+  scale_color_manual(values=diet_colors, name=my_column)
+ggsave(paste0("output/Wuni-ellipse_", my_column, ".tiff"), height=3, width=4.5, device="tiff")
+
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point(aes(shape= exercise)) + 
+  geom_point(data=centroids, size = 3) +
+  theme_q2r() +
+  stat_ellipse(level = 0.95, type = "t") +
+  xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/Wuni-ellipse_", my_column,"-exercise.tiff"), height=3, width=4.5, device="tiff")
+
+UWuni_meta <- UWuni_PCoA$data$Vectors %>%
+  select(SampleID, PC1, PC2) %>%
+  inner_join(metadata, by = c("SampleID" = "SampleID"))
+
+ggplot(UWuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/Wuni-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+centroids <- aggregate(cbind(PC1,PC2)~get(my_column),UWuni_meta,mean)
+colnames(centroids)[1] <- "diet"
+
+ggplot(UWuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*UWuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*UWuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/UWuni-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+ggplot(UWuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  geom_point(data=centroids, size=3) +
+  theme_q2r() +
+  stat_ellipse(level=0.95, type="t") +
+  xlab(paste0("PC1 (", round(100*UWuni_PCoA$data$ProportionExplained[1], digits=2), "%)")) +
+  ylab(paste0("PC2 (", round(100*UWuni_PCoA$data$ProportionExplained[2], digits=2), "%)")) +
+  scale_color_manual(values=diet_colors, name=my_column)
+ggsave(paste0("output/UWuni-ellipse_", my_column, ".tiff"), height=3, width=4.5, device="tiff")
+
+ggplot(UWuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point(aes(shape= exercise)) + 
+  geom_point(data=centroids, size = 3) +
+  theme_q2r() +
+  stat_ellipse(level = 0.95, type = "t") +
+  xlab(paste0("PC1 (", round(100*UWuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*UWuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/UWuni-ellipse_", my_column,"-exercise.tiff"), height=3, width=4.5, device="tiff")
+
+jc_meta <- jc_PCoA$data$Vectors %>%
+  select(SampleID, PC1, PC2) %>%
+  inner_join(metadata, by = c("SampleID" = "SampleID"))
+
+ggplot(jc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  theme_q2r() +
+  facet_grid(~exercise) +
+  xlab(paste0("PC1 (", round(100*jc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*jc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/JC-basic_", my_column,".tiff"), height=2, width=3, device="tiff")
+
+centroids <- aggregate(cbind(PC1,PC2)~get(my_column),jc_meta,mean)
+colnames(centroids)[1] <- "diet"
+
+ggplot(jc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point() +
+  geom_point(data=centroids, size=3) +
+  theme_q2r() +
+  stat_ellipse(level=0.95, type="t") +
+  xlab(paste0("PC1 (", round(100*jc_PCoA$data$ProportionExplained[1], digits=2), "%)")) +
+  ylab(paste0("PC2 (", round(100*jc_PCoA$data$ProportionExplained[2], digits=2), "%)")) +
+  scale_color_manual(values=diet_colors, name=my_column)
+ggsave(paste0("output/JC-ellipse_", my_column, ".tiff"), height=3, width=4.5, device="tiff")
+
+ggplot(jc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+  geom_point(aes(shape= exercise)) + 
+  geom_point(data=centroids, size = 3) +
+  theme_q2r() +
+  stat_ellipse(level = 0.95, type = "t") +
+  xlab(paste0("PC1 (", round(100*jc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
+  ylab(paste0("PC2 (", round(100*jc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
+  scale_color_manual(values = diet_colors, name = my_column)
+ggsave(paste0("output/JC-ellipse_", my_column,"-exercise.tiff"), height=3, width=4.5, device="tiff")

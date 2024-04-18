@@ -1,7 +1,11 @@
 # ANSC516ProjectCOC
 
+"COC_Metadata": metadata
+
 The R scripts for alpha diversity, beta diversity, taxa (barplot and DEseq), co-occurrence are in the folder "R scripts/", each with an individual file:
-  - A
+  - "Alpha Diversity"
+  - "Beta Diversity"
+  - "Taxa (Barplots+DESeq2)"
 
 The QIIME scripts were uploaded in the folder "QIIME pipeline/" in the following order:
   - "LogIn": Cluster Login and Module Load (Prep for Each Time)

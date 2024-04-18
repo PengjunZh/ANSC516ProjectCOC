@@ -1,0 +1,129 @@
+library(Hmisc)
+library(plyr)
+library(reshape2)
+library(qiime2R)
+library(ggplot2)
+
+setwd(dir = "/Users/pengjunzhang/Desktop/Project")
+
+ASVs <- read_qza("table.qza")
+ASV_table <- as.data.frame(ASVs$data)
+
+ASV_table$ASVnos <- paste0("ASV", 1:nrow(ASV_table))
+ASV_table$ASVstring <- rownames(ASV_table)
+rownames(ASV_table) <- ASV_table$ASVnos
+ASVkey <- ASV_table[, (ncol(ASV_table)-1):ncol(ASV_table)]
+ASV_table <- ASV_table[,-(ncol(ASV_table)-1):-ncol(ASV_table)]
+
+dataset <- as.data.frame(t(ASV_table))
+
+head(dataset[,1:10])
+
+metadata<-read_q2metadata("metadata/COC_Metadata.tsv")
+str(metadata)
+colnames(metadata)[4] = "condition"
+
+dataset <- merge(metadata, dataset, by.x = "SampleID", by.y = 0)
+treatments<-as.vector(unique(dataset$condition))
+datasetn<-dataset
+datasetn[datasetn==0]<-NA
+
+summary(metadata$condition)
+
+my_column <- "condition"
+n1 <- 4
+n2 <- 4
+n3 <- 4
+n4 <- 4
+
+num_metadata_columns <- 5
+
+q_cutoff <- 0.05
+
+final_results <- data.frame()
+
+for(i in 1:length(treatments)){
+  print(paste("reading ",treatments[i],sep=""))
+  temp<-subset(dataset, get(my_column)==treatments[i])
+  tempn<-subset(datasetn, get(my_column)==treatments[i])
+  print(paste("finished reading ",treatments[i],sep=""))
+  results<-rcorr(as.matrix(temp[,-c(1:num_metadata_columns)]),type="spearman") 
+  resultsn<-rcorr(as.matrix(tempn[,-c(1:num_metadata_columns)]),type="spearman")
+  
+  rhos<-results$r
+  ps<-results$P
+  ns<-resultsn$n
+  ps_melt<-na.omit(melt(ps))
+  ps_melt$qval<-p.adjust(ps_melt$value, method = "BH")
+  
+  names(ps_melt)[3]<-"pval"
+  ps_sub<-subset(ps_melt, qval < q_cutoff)
+  
+  rhos_melt<-na.omit(melt(rhos))
+  names(rhos_melt)[3]<-"rho"
+  
+  ns_melt<-(melt(ns))
+  names(ns_melt)[3]<-"n"
+  
+  merged<-merge(ps_sub,rhos_melt,by=c("Var1","Var2"))
+  if (treatments[i]==treatments[1]) {
+    merged<-merge(merged,subset(ns_melt, n > n1),by=c("Var1","Var2"))
+  }   else if (treatments[i]==treatments[2]) {
+    merged<-merge(merged,subset(ns_melt, n > n2),by=c("Var1","Var2"))
+  }   else if (treatments[i]==treatments[3]) {
+    merged<-merge(merged,subset(ns_melt, n > n3),by=c("Var1","Var2"))
+  }   else if (treatments[i]==treatments[4]) {
+    merged<-merge(merged,subset(ns_melt, n > n4),by=c("Var1","Var2"))
+  }   else
+    print("Somethings wrong with your treatment designations. Please Check!!")
+  
+  if (nrow(merged) > 0) {
+    merged$trt<-treatments[i]
+    final_results<-rbind(final_results, merged)
+  }   else {
+    print("no correlations for this variable")
+  }
+  
+  print(paste("finished ",treatments[i],sep=""))
+}
+
+strong_results<-subset(final_results, rho >= 0.9)
+
+taxonomy<-read_qza("taxonomy.qza")
+head(taxonomy$data)
+
+tax.clean<-parse_taxonomy(taxonomy$data)
+head(tax.clean)
+
+tax.clean[is.na(tax.clean)] <- ""
+for (i in 1:nrow(tax.clean)){
+  if (tax.clean[i,2] == ""){
+    kingdom <- paste("unclassified_", tax.clean[i,1], sep = "")
+    tax.clean[i, 2:7] <- kingdom
+  } else if (tax.clean[i,3] == ""){
+    phylum <- paste("unclassified_", tax.clean[i,2], sep = "")
+    tax.clean[i, 3:7] <- phylum
+  } else if (tax.clean[i,4] == ""){
+    class <- paste("unclassified_", tax.clean[i,3], sep = "")
+    tax.clean[i, 4:7] <- class
+  } else if (tax.clean[i,5] == ""){
+    order <- paste("unclassified_", tax.clean[i,4], sep = "")
+    tax.clean[i, 5:7] <- order
+  } else if (tax.clean[i,6] == ""){
+    family <- paste("unclassified_", tax.clean[i,5], sep = "")
+    tax.clean[i, 6:7] <- family
+  } else if (tax.clean[i,7] == ""){
+    tax.clean$Species[i] <- paste("unclassified_",tax.clean$Genus[i], sep = "_")
+  }
+}
+
+strong_results_taxa <- merge(strong_results, ASVkey, by.x = "Var1", by.y = "ASVnos")
+strong_results_taxa <- merge(strong_results_taxa, ASVkey, by.x = "Var2", by.y = "ASVnos")
+strong_results_taxa <- merge(strong_results_taxa, tax.clean, by.x = "ASVstring.x", by.y = 0)
+strong_results_taxa <- merge(strong_results_taxa, tax.clean, by.x = "ASVstring.y", by.y = 0)
+
+write.csv(strong_results_taxa, "output/moving-pictures-strong-results-taxa.csv", row.names = F)
+write.csv(subset(strong_results_taxa, trt=="COC_VWR"), "output/moving-pictures-strong-results-taxa-COC_VWR.csv", row.names = F)
+write.csv(subset(strong_results_taxa, trt=="COC_SED"), "output/moving-pictures-strong-results-taxa-COC_SED.csv", row.names = F)
+write.csv(subset(strong_results_taxa, trt=="HFD_VWR"), "output/moving-pictures-strong-results-taxa-HFD_VWR.csv", row.names = F)
+write.csv(subset(strong_results_taxa, trt=="HFD_SED"), "output/moving-pictures-strong-results-taxa-HFD_SED.csv", row.names = F)

@@ -5,7 +5,7 @@ scp COC_Metadata zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zh
 scp -r sequences zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project
 
 #Importing Data to Qiime
-#log in cluster and load modules like in file "LogIn"
+#log in cluster and load modules like in file "1-LogIn"
 
 qiime tools import \
   --type 'SampleData[PairedEndSequencesWithQuality]' \

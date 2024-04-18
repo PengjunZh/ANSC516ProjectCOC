@@ -1,3 +1,5 @@
+#Taxa Barplots: Relative Abundance
+
 wget \
   -O "gg-13-8-99-515-806-nb-classifier.qza" \
   "https://data.qiime2.org/2024.2/common/gg-13-8-99-515-806-nb-classifier.qza"
@@ -10,3 +12,23 @@ qiime feature-classifier classify-sklearn \
 qiime metadata tabulate \
   --m-input-file taxonomy.qza \
   --o-visualization taxonomy.qzv
+
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --o-visualization taxa-bar-plots.qzv
+
+#ANCOM-BC: Differential Abundance
+
+qiime feature-table filter-samples \
+  --i-table table.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --p-where "[diet]='HFD'" \
+  --o-filtered-table HFD-table.qza
+
+qiime feature-table filter-samples \
+  --i-table table.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --p-where "[diet]='COC'" \
+  --o-filtered-table COC-table.qza

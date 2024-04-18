@@ -1,0 +1,54 @@
+#Module load like in "1-LogIn"
+
+cd$RCAC_SCRATCH
+cd Project
+
+qiime sample-classifier classify-samples \
+  --i-table table.qza \
+  --m-metadata-file metadata/COC_Metadata.tsv \
+  --m-metadata-column condition \
+  --p-optimize-feature-selection \
+  --p-parameter-tuning \
+  --p-estimator RandomForestClassifier \
+  --p-n-estimators 20 \
+  --p-random-state 123 \
+  --output-dir project-classifier
+
+qiime metadata tabulate \
+  --m-input-file project-classifier/predictions.qza \
+  --o-visualization project-classifier/predictions.qzv
+
+qiime metadata tabulate \
+  --m-input-file project-classifier/probabilities.qza \
+  --o-visualization project-classifier/probabilities.qzv
+
+qiime metadata tabulate \
+  --m-input-file project-classifier/feature_importance.qza \
+  --o-visualization project-classifier/feature_importance.qzv
+
+qiime feature-table filter-features \
+  --i-table moving-pictures-table.qza \
+  --m-metadata-file project-classifier/feature_importance.qza \
+  --o-filtered-table project-classifier/important-feature-table.qza
+
+qiime sample-classifier heatmap \
+  --i-table table.qza \
+  --i-importance project-classifier/feature_importance.qza \
+  --m-sample-metadata-file metadata/COC_Metadata.tsv \
+  --m-sample-metadata-column condition \
+  --p-group-samples \
+  --p-feature-count 30 \
+  --o-filtered-table project-classifier/important-feature-table-top-30.qza \
+  --o-heatmap project-classifier/important-feature-heatmap.qzv
+
+qiime sample-classifier heatmap \
+--i-table table.qza \
+--i-importance project-classifier/feature_importance.qza  \
+--m-sample-metadata-file metadata/COC_Metadata.tsv  \
+--m-sample-metadata-column condition \
+--m-feature-metadata-file taxonomy.qza \
+--m-feature-metadata-column Taxon \
+--p-group-samples  \
+--p-feature-count 30  \
+--o-filtered-table project-classifier/important-feature-table-taxonomy-top-30.qza \
+--o-heatmap project-classifier/important-feature-heatmap-taxonomy.qzv

@@ -1,7 +1,7 @@
 #Upload Sequences and Metada to Cluster
 
 cd Desktop/Project
-scp metadata zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project/metadata
+scp COC_Metadata zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project/metadata
 scp -r sequences zhan5084@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/zhan5084/Project
 
 #Importing Data to Qiime

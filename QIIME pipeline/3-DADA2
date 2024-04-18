@@ -14,3 +14,11 @@ qiime metadata tabulate \
 
 mv rep-seqs-dada2.qza rep-seqs.qza
 mv table-dada2.qza table.qza
+
+qiime feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file metadata/COC_Metadata.tsv
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv

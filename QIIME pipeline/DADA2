@@ -1,0 +1,16 @@
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux.qza \
+  --p-trim-left-f 15 \
+  --p-trim-left-r 15 \
+  --p-trunc-len-f 230 \
+  --p-trunc-len-r 163 \
+  --o-representative-sequences rep-seqs-dada2.qza \
+  --o-table table-dada2.qza \
+  --o-denoising-stats stats-dada2.qza
+
+qiime metadata tabulate \
+  --m-input-file stats-dada2.qza \
+  --o-visualization stats-dada2.qzv
+
+mv rep-seqs-dada2.qza rep-seqs.qza
+mv table-dada2.qza table.qza

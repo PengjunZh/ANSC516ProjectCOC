@@ -1,0 +1,12 @@
+ssh zhan5084@bell.rcac.purdue.edu
+
+slist                         
+squeue -A microbiome       
+sinteractive -A microbiome -t 2:30:00 -n4
+
+module load bioinfo
+module load Qiime/2-2023.9
+module list
+
+cd /scratch/bell/zhan5084
+mkdir Project

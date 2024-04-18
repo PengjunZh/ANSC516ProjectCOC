@@ -1,0 +1,166 @@
+library(qiime2R)
+library(phyloseq)
+library(zoo)
+library(tidyverse)
+library(DESeq2)
+
+list.files()
+if(!dir.exists("/Users/pengjunzhang/Desktop/Project/output/taxa"))
+  dir.create("/Users/pengjunzhang/Desktop/Project/output/taxa")
+setwd("/Users/pengjunzhang/Desktop/Project")
+
+physeq <- qza_to_phyloseq(
+  features = "core-metrics-results/rarefied_table.qza" ,
+  tree = "rooted-tree.qza" ,
+  taxonomy = "taxonomy.qza" ,
+  metadata = "COC_Metadata.tsv"
+)
+
+asv_table <- data.frame(otu_table(physeq), check.names = F)
+metadata <- data.frame(sample_data(physeq), check.names = F)
+taxonomy <- data.frame(tax_table(physeq), check.names = F)
+
+levels(metadata$condition)
+metadata$condition = factor(metadata$condition, c("COC_SED", "COC_VWR", "HFD_SED", "HFD_VWR"))
+levels(metadata$condition.ord)
+
+head(taxonomy)
+tax.clean <- taxonomy
+
+tax.clean[is.na(tax.clean)] <- ""
+for (i in 1:nrow(tax.clean)){
+  if (tax.clean[i,2] == ""){
+    kingdom <- paste("uncl_", tax.clean[i,1], sep = "")
+    tax.clean[i, 2:7] <- kingdom
+  } else if (tax.clean[i,3] == ""){
+    phylum <- paste("uncl_", tax.clean[i,2], sep = "")
+    tax.clean[i, 3:7] <- phylum
+  } else if (tax.clean[i,4] == ""){
+    class <- paste("uncl_", tax.clean[i,3], sep = "")
+    tax.clean[i, 4:7] <- class
+  } else if (tax.clean[i,5] == ""){
+    order <- paste("uncl_", tax.clean[i,4], sep = "")
+    tax.clean[i, 5:7] <- order
+  } else if (tax.clean[i,6] == ""){
+    family <- paste("uncl_", tax.clean[i,5], sep = "")
+    tax.clean[i, 6:7] <- family
+  } else if (tax.clean[i,7] == ""){
+    tax.clean$Species[i] <- paste("uncl_",tax.clean$Genus[i], sep = "_")
+  }
+}
+
+OTU.physeq = otu_table(as.matrix(asv_table), taxa_are_rows = TRUE)
+tax.physeq = tax_table(as.matrix(tax.clean))    
+meta.physeq = sample_data(metadata)
+
+physeq_bar_plot = phyloseq(OTU.physeq, tax.physeq, meta.physeq)
+
+my_colors <- c(
+  '#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf',
+  '#e0f3f8','#abd9e9','#74add1','#4575b4','#313695','#543005', 
+  "#8c510a", "#bf812d", "#f6ebc3","#f5f5f5", "#c7eae5", "#80cdc1",
+  "#35978f", "#01665e","#003c30", "#40004b", "#762a83", 
+  "#9970ab", "#c2a5cf","#e7d4e8", "#d9f0d3", "#a6dba0", "#5aae61", "#1b7837"
+)
+
+my_level <- c("Phylum", "Family", "Genus")
+my_column <- "condition"
+
+rm(taxa.summary)
+
+abund_filter <- 0.05
+
+for(ml in my_level){
+  print(ml)
+  
+  taxa.summary <- physeq_bar_plot %>%
+    tax_glom(taxrank = ml, NArm = FALSE) %>%  
+    transform_sample_counts(function(x) {x/sum(x)} ) %>% 
+    psmelt()  %>%                              
+    group_by(get(my_column), get(ml)) %>%
+    summarise(Abundance.average=mean(Abundance)) 
+  taxa.summary <- as.data.frame(taxa.summary)
+  colnames(taxa.summary)[1] <- my_column
+  colnames(taxa.summary)[2] <- ml
+  
+  physeq.taxa.max <- taxa.summary %>% 
+    group_by(get(ml)) %>%
+    summarise(overall.max=max(Abundance.average))
+  
+  physeq.taxa.max <- as.data.frame(physeq.taxa.max)
+  colnames(physeq.taxa.max)[1] <- ml
+  
+  physeq_meta <- merge(taxa.summary, physeq.taxa.max)
+  
+  
+  physeq_meta_filtered <- filter(physeq_meta, overall.max>abund_filter)
+  
+  physeq_meta_filtered$condition.all = factor(physeq_meta_filtered$condition, c("COC_SED", "COC_VWR", "HFD_SED", "HFD_VWR"))
+  
+  ggplot(physeq_meta_filtered, aes(x = get(my_column), y = Abundance.average, fill = get(ml))) + 
+    #facet_grid(.~LitterTreatment) +
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values = my_colors) +
+    # Remove x axis title
+    #theme(axis.title.x = element_blank()) + 
+    ylim(c(0,1)) +
+    guides(fill = guide_legend(reverse = F, keywidth = .5, keyheight = .5, ncol = 1)) +
+    theme(legend.text=element_text(size=8)) +
+    #theme(legend.position="bottom") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    theme(legend.title = element_blank()) +
+    ylab("Relative Abundance") +
+    xlab(my_column) +
+    ggtitle(paste0(ml, " (>", abund_filter * 100,"%) in at least 1 sample")) 
+  ggsave(paste0("output/taxa/", ml, "BarPlot_", my_column, ".png"), height = 5, width = 4)
+}
+
+physeq_otu_table <- data.frame(otu_table(physeq), check.names = FALSE)
+
+OTU.clean2 <- physeq_otu_table + 1
+
+OTU.physeq = otu_table(as.matrix(OTU.clean2), taxa_are_rows=TRUE)
+
+physeq_deseq = phyloseq(OTU.physeq, tax.physeq, meta.physeq)
+
+diagdds = phyloseq_to_deseq2(physeq_deseq, ~ condition)
+diagdds = DESeq(diagdds, test="Wald", fitType="parametric")
+
+alpha = 0.05
+
+
+run_deseq2 <- function(my_factor, x, y){
+  
+  my_contrast <- c(my_factor, x, y)
+  res = results(diagdds, contrast = my_contrast, cooksCutoff = FALSE)
+  
+  sigtab = res[which(res$padj < alpha), ]
+  sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(physeq_deseq)[rownames(sigtab), ], "matrix"))
+  
+  theme_set(theme_bw())
+  scale_fill_discrete <- function(palname = "Set1", ...) {
+    scale_fill_brewer(palette = palname, ...)
+  }
+  # Genus order
+  x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+  x = sort(x, TRUE)
+  sigtab$Genus = factor(as.character(sigtab$Genus), levels=names(x))
+  DESeq_fig = ggplot(sigtab, aes(x=Genus, y = log2FoldChange, color=Phylum)) + 
+    geom_point(size=3) + 
+    ylab(paste0("(", my_contrast[2], "/", my_contrast[3], ")\n", "log2FoldChange")) +
+    scale_color_manual(values = my_colors[c(4,6,8,10,12,14,16,18,20)]) +
+    #ylim(0,8) +
+    geom_text(color="black", x=length(unique(sigtab$Genus))-1, y=max(sigtab$log2FoldChange)-1, label=my_contrast[2], show_guide = F) +
+    geom_text(color="black", x=3, y=min(sigtab$log2FoldChange)+1, label=my_contrast[3], show_guide = F) +
+    theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))
+  
+  ggsave(paste0("output/taxa/DESeq2-", my_contrast[2], "-", my_contrast[3], ".png"), DESeq_fig, height = 5, width = 10)
+}
+
+
+run_deseq2("condition", "COC_SED", "COC_VWR")
+run_deseq2("condition", "COC_SED", "HFD_SED")
+run_deseq2("condition", "COC_SED", "HFD_VWR") 
+run_deseq2("condition", "COC_VWR", "HFD_SED") 
+run_deseq2("condition", "COC_VWR", "HFD_VWR") 
+run_deseq2("condition", "HFD_SED", "HFD_VWR") 
